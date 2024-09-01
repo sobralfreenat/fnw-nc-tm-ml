@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NC TM ML Calculator with Comparison</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f9;
+        }
+        input, select {
+            margin: 5px 0;
+            padding: 8px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            margin: 5px;
+            padding: 10px;
+            width: 50%;
+            box-sizing: border-box;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .container h1 {
+            text-align: center;
+            color: #333;
+        }
+        .button-group {
+            display: flex;
+            justify-content: space-between;
+        }
+        #plot {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>NC TM ML Calculator with Comparison</h1>
+        <label for="nc">(NC) (#):</label>
+        <input type="number" id="nc" oninput="calculateAndUpdate()" required> <br>
+        <label for="tm">(TM) (#):</label>
+        <input type="number" id="tm" oninput="calculateAndUpdate()" required> <br>
+        <label for="ml">(ML) (%):</label>
+        <input type="number" id="ml" oninput="calculateAndUpdate()" required> <br>
+        <label for="startDate">Start Date:</label>
+        <input type="date" id="startDate" oninput="calculateAndUpdate()" required> <br>
+        <label for="endDate">End Date:</label>
+        <input type="date" id="endDate" oninput="calculateAndUpdate()" required> <br>
+        <div class="button-group">
+            <button onclick="addScenario()">Add Scenario</button>
+        </div>
+        <div class="button-group">
+            <button onclick="clearScenarios()">Clear Scenarios</button>
+            <button onclick="saveScenarios()">Save Scenarios</button>
+            <button onclick="loadScenarios()">Load Scenarios</button>
+        </div>
+        <div id="plot"></div>
+    </div>
+
+    <script>
+        let scenarios = [];
+        let currentScenario = null;
+
+        function calculateAndUpdate() {
+            const nc = parseFloat(document.getElementById('nc').value);
+            const tm = parseFloat(document.getElementById('tm').value);
+            const ml = parseFloat(document.getElementById('ml').value);
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            if (isNaN(nc) || isNaN(tm) || isNaN(ml) || !startDate || !endDate) {
+                return;
+            }
+
+            const faturamento = nc * tm;
+            const margemLucro = faturamento * (ml / 100);
+            const seisPorcento = margemLucro * 0.06;
+            const sessentaSeisPorcento = seisPorcento * 0.66;
+
+            currentScenario = {
+                nc, tm, ml, startDate, endDate,
+                faturamento, margemLucro, seisPorcento, sessentaSeisPorcento
+            };
+
+            // Atualiza os valores nos campos após o cálculo
+            updateInputFields();
+        }
+
+        function updateInputFields() {
+            document.getElementById('nc').value = currentScenario.nc || '';
+            document.getElementById('tm').value = currentScenario.tm || '';
+            document.getElementById('ml').value = currentScenario.ml || '';
+            document.getElementById('startDate').value = currentScenario.startDate || '';
+            document.getElementById('endDate').value = currentScenario.endDate || '';
+        }
+
+        function addScenario() {
+            if (!currentScenario) {
+                alert('Please enter valid data.');
+                return;
+            }
+
+            scenarios.push(currentScenario);
+            plotScenarios();
+        }
+
+        function plotScenarios() {
+            const data = scenarios.map((scenario, index) => {
+                return {
+                    x: ['Faturamento', 'Margem de Lucro', '6% da ML', '66% dos 6% da ML'],
+                    y: [scenario.faturamento, scenario.margemLucro, scenario.seisPorcento, scenario.sessentaSeisPorcento],
+                    type: 'bar',
+                    name: `Scenario ${index + 1} (${scenario.startDate} to ${scenario.endDate})`
+                };
+            });
+
+            const layout = {
+                title: 'Comparison of Scenarios',
+                barmode: 'group'
+            };
+
+            Plotly.newPlot('plot', data, layout);
+        }
+
+        function clearScenarios() {
+            scenarios = [];
+            Plotly.purge('plot');
+        }
+
+        function saveScenarios() {
+            const scenarioName = prompt('Enter the name of the scenarios file:', 'scenarios.json');
+
+            if (scenarioName) {
+                const blob = new Blob([JSON.stringify(scenarios)], { type: 'application/json' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = scenarioName;
+                link.click();
+            }
+        }
+
+        function loadScenarios() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'application/json';
+
+            input.onchange = function (event) {
+                const file = event.target.files[0];
+                const reader = new FileReader();
+
+                reader.onload = function (e) {
+                    scenarios = JSON.parse(e.target.result);
+                    plotScenarios();
+                };
+
+                reader.readAsText(file);
+            };
+
+            input.click();
+        }
+    </script>
+</body>
+</html>
